@@ -1,8 +1,8 @@
 {
-  "name": "grunt-saucelabs",
+  "name": "@knappi/grunt-saucelabs",
   "description": "Grunt task running tests using Sauce Labs. Supports QUnit, Jasmine, Mocha and YUI tests",
   "version": "9.0.1",
-  "homepage": "https://github.com/axemclion/grunt-saucelabs",
+  "homepage": "https://github.com/nknapp/grunt-saucelabs",
   "author": {
     "name": "Parashuram",
     "email": "code@nparashuram.com",
@@ -28,7 +28,7 @@
     "lodash": "^4.17.11",
     "q": "~1.4.1",
     "requestretry": "~1.9.0",
-    "sauce-tunnel": "github:nknapp/sauce-tunnel",
+    "@knappi/sauce-tunnel": "^2.5.0",
     "saucelabs": "^1.5.0"
   },
   "peerDependencies": {
