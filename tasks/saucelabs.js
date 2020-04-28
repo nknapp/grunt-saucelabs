@@ -14,11 +14,11 @@ module.exports = function (grunt) {
     var matches = portRegExp.exec(url);
     var port = matches ? parseInt(matches[1], 10) : null;
     var supportedPorts = [
-        80, 443, 888, 2000, 2001, 2020, 2109, 2222, 2310, 3000, 3001, 3030,
-        3210, 3333, 4000, 4001, 4040, 4321, 4502, 4503, 4567, 5000, 5001, 5050, 5555, 5432, 6000,
-        6001, 6060, 6666, 6543, 7000, 7070, 7774, 7777, 8000, 8001, 8003, 8031, 8080, 8081, 8765,
-        8888, 9000, 9001, 9080, 9090, 9876, 9877, 9999, 49221, 55001
-      ];
+      80, 443, 888, 2000, 2001, 2020, 2109, 2222, 2310, 3000, 3001, 3030,
+      3210, 3333, 4000, 4001, 4040, 4321, 4502, 4503, 4567, 5000, 5001, 5050, 5555, 5432, 6000,
+      6001, 6060, 6666, 6543, 7000, 7070, 7774, 7777, 8000, 8001, 8003, 8031, 8080, 8081, 8765,
+      8888, 9000, 9001, 9080, 9090, 9876, 9877, 9999, 49221, 55001
+    ];
 
     if (port) {
       return supportedPorts.indexOf(port) === -1;
@@ -67,7 +67,7 @@ module.exports = function (grunt) {
       break;
     default:
       grunt.log.error('Unexpected notification type');
-    }
+  }
   }
 
   function createTunnel(arg) {
@@ -101,62 +101,38 @@ module.exports = function (grunt) {
     return tunnel;
   }
 
+  async function asyncRunTask(arg, framework) {
+    let tunnel = null;
+    if (arg.tunneled) {
+      tunnel = createTunnel(arg);
+      await new Promise(((resolve, reject) => {
+        tunnel.start(success => success ? resolve() : reject(new Error('Could not create tunnel to Sauce Labs')));
+      }));
+    }
+
+    try {
+      const testRunner = new TestRunner(arg, framework, reportProgress);
+      await testRunner.runTests();
+    } finally {
+      if (tunnel != null) {
+        reportProgress({
+          type: 'tunnelClose'
+        });
+        await new Promise(resolve => tunnel.stop(resolve));
+      }
+    }
+  }
+
   function runTask(arg, framework, callback) {
-    var tunnel;
-
-    Q
-      .fcall(function () {
-        var deferred;
-
-        if (arg.tunneled) {
-          deferred = Q.defer();
-
-          tunnel = createTunnel(arg);
-          tunnel.start(function (succeeded) {
-            if (!succeeded) {
-              deferred.reject('Could not create tunnel to Sauce Labs');
-            } else {
-              reportProgress({
-                type: 'tunnelOpened'
-              });
-
-              deferred.resolve();
-            }
-          });
-          return deferred.promise;
-        }
-      })
-      .then(function () {
-        var testRunner = new TestRunner(arg, framework, reportProgress);
-        return testRunner.runTests();
-      })
-      .fin(function () {
-        var deferred;
-
-        if (tunnel) {
-          deferred = Q.defer();
-
-          reportProgress({
-            type: 'tunnelClose'
-          });
-
-          tunnel.stop(function () {
-            deferred.resolve();
-          });
-
-          return deferred.promise;
-        }
-      })
-      .then(
-        function (passed) {
-          callback(passed);
-        },
-        function (error) {
-          grunt.log.error(error.stack || error.toString());
-          callback(false);
-        }
-      )
-      .done();
+    asyncRunTask(arg, framework).then(
+      function (passed) {
+        callback(passed);
+      },
+      function (error) {
+        grunt.log.error(error.stack || error.toString());
+        callback(false);
+      }
+    );
   }
 
   var defaults = {
@@ -186,8 +162,12 @@ module.exports = function (grunt) {
       key = newKey;
     },
     get: function () {
-      var get = function () { return key; };
-      get.toString = function () { return key ? "[hidden]" : undefined; };
+      var get = function () {
+        return key;
+      };
+      get.toString = function () {
+        return key ? "[hidden]" : undefined;
+      };
       get.toJSON = get.toString;
       return get;
     }
@@ -197,7 +177,7 @@ module.exports = function (grunt) {
     var done = this.async();
     var arg = this.options(defaults);
 
-    runTask(arg, 'jasmine', done);
+    runTask(arg, 'jasmine').then(done);
   });
 
   grunt.registerMultiTask('saucelabs-qunit', 'Run Qunit test cases using Sauce Labs browsers', function () {
